@@ -1,104 +1,153 @@
-# Weekly Energy Consumption Reports with EnergiDataService, Email and Google Drive
+# Generate Weekly Energy Consumption Reports with API, Email and Google Drive
 
-### 📊 Automated Energy Reporting (n8n | API | Google Drive | Email)
-
-This workflow automates the process of retrieving energy consumption data from the EnergiDataService API, formatting it into a professional report, and distributing it every week via email and Google Drive. It is designed to help energy managers and sustainability teams track consumption patterns without manual data exports.
+This workflow automates the process of retrieving energy consumption data, formatting it into a CSV report, and distributing it every week via email and Google Drive.
 
 ---
 
 ## ⚡ Quick Implementation Steps
 
-- **Import** the workflow JSON into your n8n instance.
-- **Configure** your Gmail/Outlook and Google Drive credentials.
-- **Adjust** the Schedule (Cron) node if you need a different reporting time (default is Monday morning).
-- **Activate** the workflow to start receiving automated weekly reports.
+- Import the workflow into your n8n instance.
+- Configure your API, email details and Google Drive folder.
+- (Optional) Adjust the CRON schedule if you need a different time or frequency.
+- Activate workflow — automated weekly reports begin immediately.
 
 ---
 
-## 🎯 Who's It For
+## Who’s It For
 
-- **Energy Providers & Utilities:** Automate reporting for end-users or internal teams.
-- **Sustainability Departments:** Track weekly carbon footprints and usage.
-- **Facility Managers:** Monitor building energy performance over time.
-- **Renewable Energy Operators:** Log grid consumption alongside local production.
+Energy providers, sustainability departments, facility managers, renewable energy operators.
 
 ---
 
-## 🛠 Requirements
+## Requirements
 
-| Tool                      | Purpose                                              |
-| :------------------------ | :--------------------------------------------------- |
-| **n8n Instance**          | To run and schedule the automation                   |
-| **EnergiDataService API** | Source of energy consumption data (Public API)       |
-| **Google Drive**          | To archive a permanent copy of the CSV/Excel reports |
-| **Email Service**         | To distribute the weekly report (Gmail/Outlook/SMTP) |
+- n8n instance
+- Energy Consumption API access
+- Google Drive account
+- Email SMTP access
 
 ---
 
-## 🧠 How It Works
+## ⚙️ How It Works
 
-1.  **Schedule Weekly:** A Cron node triggers the workflow every Monday at 8:00 AM.
-2.  **Fetch Energy Data:** An HTTP Request node pulls consumption data (e.g., `ConsumptionDE35Hour`) from the EnergiDataService API.
-3.  **Normalize Records:** A Code node cleans and transforms the raw JSON into a flat structure.
-4.  **Convert to File:** The data is converted into a downloadable CSV or binary file.
-5.  **Distribute:** The report is sent to stakeholders via email and simultaneously uploaded to a specific folder in Google Drive.
+The workflow triggers every Monday at 8:00 AM, fetches energy consumption data, converts it into a CSV file, emails the report, and uploads a copy to Google Drive.
 
 ---
 
-## 🔧 How To Set Up – Step-by-Step
+## Workflow Steps
 
-1.  **Import Workflow:** Upload the `.json` file into your n8n workspace.
-2.  **Set Credentials:**
-    - **Google Drive:** Connect via OAuth2 and select the target folder.
-    - **Email:** Connect your Gmail, Outlook, or SMTP credentials.
-3.  **Configure API:**
-    - The workflow is pre-configured for `api.energidataservice.dk`.
-    - If you need data for a specific region or meter, update the URL parameters in the **HTTP Request** node.
-4.  **Test Run:** Click "Execute Workflow" to ensure the file is generated and sent correctly.
-5.  **Activate:** Toggle the workflow to **Active**.
+### 1. Schedule Weekly (Mon 8:00 AM)
+
+- **Type:** Cron Node
+- Runs every Monday at 8:00 AM.
+- Triggers the workflow execution automatically.
 
 ---
 
-## ✨ How To Customise
+### 2. Fetch Energy Data
 
-| Customization        | Method                                                                            |
-| :------------------- | :-------------------------------------------------------------------------------- |
-| **Change Frequency** | Edit the **Cron** node to run Daily, Monthly, or at specific hours.               |
-| **File Format**      | Change the **Convert to File** node settings to output `.xlsx` instead of `.csv`. |
-| **Add Branding**     | Modify the HTML body in the **Email** node to include your company logo.          |
-| **Threshold Alerts** | Add an **IF Node** to only send reports if consumption exceeds a certain limit.   |
+- **Type:** HTTP Request Node
+- Makes a GET request to the Energi Data Service API.
+- Returns JSON data with hourly electricity consumption.
 
----
+Example API:
 
-## ➕ Add-ons (Advanced)
+```
+https://api.energidataservice.dk/dataset/ConsumptionDE35Hour
+```
 
-- **Analytics Integration:** Connect to Power BI or Tableau to visualize the stored Google Drive data.
-- **Slack/Teams Notifications:** Send a summary of the report directly to a chat channel.
-- **Multi-Source Reporting:** Merge data from solar inverters or IoT sensors alongside the grid data.
+Sample Response:
 
----
-
-## 📈 Use Case Examples
-
-- **Compliance Reporting:** Automatically generate records for environmental and regulatory audits.
-- **Operational Analytics:** Identify peak usage hours to optimize machinery or heating schedules.
-- **Forecasting:** Feed the historical CSV data into an AI model to predict next week’s energy costs.
-
----
-
-## 🧯 Troubleshooting Guide
-
-| Issue                 | Possible Cause             | Solution                                                              |
-| :-------------------- | :------------------------- | :-------------------------------------------------------------------- |
-| **API Error 404/500** | EnergiDataService downtime | Re-try the execution; check the API status page.                      |
-| **No File in Drive**  | Permission issues          | Ensure the Google account has "Editor" access to the folder.          |
-| **Email Not Sending** | Credential mismatch        | Re-authenticate your Gmail/Outlook node in the credentials tab.       |
-| **Empty Report**      | No data for selected range | Ensure the API query dates are calculated correctly in the Code node. |
+```json
+{
+  "records": [
+    {
+      "HourDK": "2025-08-25T01:00:00",
+      "MunicipalityNo": 101,
+      "MunicipalityName": "Copenhagen",
+      "ConsumptionkWh": 12345.67
+    }
+  ]
+}
+```
 
 ---
 
-## 📞 Need Assistance?
+### 3. Normalize Records
 
-Need help integrating this with a specific energy meter or building a custom dashboard?
+- **Type:** Code Node
+- Extracts the `records` array and converts each record into a separate item.
 
-👉 **Contact WeblineIndia** — Expert automation partners for energy, IoT, and enterprise workflows.
+```javascript
+const itemlist = $input.first().json.records;
+return itemlist.map((r) => ({ json: r }));
+```
+
+---
+
+### 4. Convert to File
+
+- **Type:** Convert to File Node
+- Converts JSON data into a CSV file.
+- Stores the file in binary format.
+
+---
+
+### 5. Send Email Weekly Report
+
+- **Type:** Email Send Node
+- Sends the CSV file as an email attachment.
+- Subject: **Weekly Energy Consumption Report**
+
+---
+
+### 6. Upload Report to Google Drive
+
+- **Type:** Google Drive Node
+- Uploads the CSV file to Google Drive.
+- Example filename:
+
+```
+energy_report_{{ $now.format('yyyy_MM_dd_HH_mm_ss') }}
+```
+
+---
+
+## ✨ How To Customize
+
+- Change the schedule (daily, monthly).
+- Modify email subject or body.
+- Convert CSV to Excel or PDF.
+- Add Slack or Teams notifications.
+
+---
+
+## ➕ Add-ons
+
+- Power BI / Tableau integration
+- PDF or Excel reports
+- Slack alerts
+
+---
+
+## Use Case Examples
+
+- Weekly compliance reports
+- Energy usage tracking
+- Forecasting and analytics
+
+---
+
+## Troubleshooting
+
+| Issue          | Cause             | Solution                  |
+| -------------- | ----------------- | ------------------------- |
+| No data        | API issue         | Verify API URL            |
+| Email not sent | SMTP config       | Check email credentials   |
+| Upload failed  | Drive permissions | Check Google Drive access |
+
+---
+
+## Need Assistance?
+
+Contact **WeblineIndia** for customization and support.
